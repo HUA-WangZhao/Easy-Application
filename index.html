@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Resume Studio</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand-block">
+          <div class="brand-mark" aria-hidden="true">RS</div>
+          <div>
+            <h1>Resume Studio</h1>
+            <p id="statusText">本地工作台</p>
+          </div>
+        </div>
+        <div class="top-actions">
+          <label class="file-action">
+            <input id="resumeFile" type="file" accept=".txt,.md,.markdown,.json,.csv,.pdf,.doc,.docx,.rtf,.html,.htm" />
+            导入
+          </label>
+          <button id="sampleBtn" type="button">样例</button>
+          <button id="saveBtn" type="button">保存</button>
+          <button id="saveAsBtn" type="button">另存为</button>
+          <button id="loadBtn" type="button">读取</button>
+          <button id="printBtn" type="button">打印/PDF</button>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <nav class="rail" aria-label="功能区">
+          <button class="rail-btn active" type="button" data-panel="resumePanel" title="简历内容">
+            <span class="rail-icon">CV</span>
+            <span>简历</span>
+          </button>
+          <button class="rail-btn" type="button" data-panel="optimizePanel" title="岗位优化">
+            <span class="rail-icon">AI</span>
+            <span>优化</span>
+          </button>
+          <button class="rail-btn" type="button" data-panel="layoutPanel" title="版式排版">
+            <span class="rail-icon">LY</span>
+            <span>版式</span>
+          </button>
+          <button class="rail-btn" type="button" data-panel="avatarPanel" title="头像处理">
+            <span class="rail-icon">PH</span>
+            <span>头像</span>
+          </button>
+          <button class="rail-btn" type="button" data-panel="autofillPanel" title="投递填表">
+            <span class="rail-icon">FM</span>
+            <span>投递</span>
+          </button>
+          <button class="rail-btn" type="button" data-panel="slidesPanel" title="PPT编辑">
+            <span class="rail-icon">PT</span>
+            <span>PPT</span>
+          </button>
+        </nav>
+
+        <section class="control-pane">
+          <div class="panel active" id="resumePanel">
+            <div class="panel-heading">
+              <h2>简历内容</h2>
+              <button id="parseBtn" type="button">从全文解析</button>
+            </div>
+            <div class="field-grid two">
+              <label>
+                <span>姓名</span>
+                <input id="nameInput" autocomplete="name" />
+              </label>
+              <label>
+                <span>目标岗位</span>
+                <input id="titleInput" />
+              </label>
+              <label>
+                <span>邮箱</span>
+                <input id="emailInput" autocomplete="email" />
+              </label>
+              <label>
+                <span>电话</span>
+                <input id="phoneInput" autocomplete="tel" />
+              </label>
+              <label>
+                <span>城市</span>
+                <input id="locationInput" />
+              </label>
+              <label>
+                <span>作品/主页</span>
+                <input id="linkInput" />
+              </label>
+            </div>
+            <label>
+              <span>全文导入区</span>
+              <textarea id="rawInput" rows="6"></textarea>
+            </label>
+            <label>
+              <span>职业摘要</span>
+              <textarea id="summaryInput" rows="4"></textarea>
+            </label>
+            <label>
+              <span>技能关键词</span>
+              <textarea id="skillsInput" rows="4"></textarea>
+            </label>
+            <label>
+              <span>工作经历</span>
+              <textarea id="experienceInput" rows="9"></textarea>
+            </label>
+            <label>
+              <span>项目/作品</span>
+              <textarea id="projectsInput" rows="6"></textarea>
+            </label>
+            <label>
+              <span>教育/证书</span>
+              <textarea id="educationInput" rows="4"></textarea>
+            </label>
+          </div>
+
+          <div class="panel" id="optimizePanel">
+            <div class="panel-heading">
+              <h2>岗位优化</h2>
+              <div class="action-row compact">
+                <button id="optimizeBtn" type="button">本地优化</button>
+                <button id="apiOptimizeBtn" type="button">AI优化</button>
+              </div>
+            </div>
+            <div class="field-grid two">
+              <label>
+                <span>方向</span>
+                <select id="directionSelect">
+                  <option value="ai">AI/算法工程师</option>
+                  <option value="frontend">前端工程师</option>
+                  <option value="product">产品经理</option>
+                  <option value="data">数据分析师</option>
+                  <option value="marketing">增长/市场运营</option>
+                  <option value="general">通用商务岗位</option>
+                </select>
+              </label>
+              <label>
+                <span>目标职级</span>
+                <select id="senioritySelect">
+                  <option value="experienced">有经验</option>
+                  <option value="entry">校招/初级</option>
+                  <option value="senior">高级/负责人</option>
+                </select>
+              </label>
+            </div>
+            <label>
+              <span>岗位 JD / 招聘页面文本</span>
+              <textarea id="jdInput" rows="8"></textarea>
+            </label>
+            <div class="api-box">
+              <div class="panel-subheading">
+                <h3>AI API 设置</h3>
+                <span id="apiStatus">未连接</span>
+              </div>
+              <div class="field-grid two">
+                <label>
+                  <span>服务商</span>
+                  <select id="apiProviderSelect">
+                    <option value="openai">OpenAI</option>
+                    <option value="deepseek">DeepSeek</option>
+                    <option value="qwen">通义千问兼容</option>
+                    <option value="zhipu">智谱 GLM</option>
+                    <option value="kimi">Kimi / Moonshot</option>
+                    <option value="custom">自定义</option>
+                  </select>
+                </label>
+                <label>
+                  <span>接口类型</span>
+                  <select id="apiTypeSelect">
+                    <option value="responses">OpenAI Responses</option>
+                    <option value="chat">Chat Completions 兼容</option>
+                  </select>
+                </label>
+                <label>
+                  <span>模型</span>
+                  <input id="apiModelInput" placeholder="gpt-5.5" />
+                </label>
+                <label class="wide-field">
+                  <span>接口地址</span>
+                  <input id="apiEndpointInput" placeholder="https://api.openai.com/v1/responses" />
+                </label>
+                <label class="wide-field">
+                  <span>API Key</span>
+                  <input id="apiKeyInput" type="password" placeholder="sk-..." autocomplete="off" />
+                </label>
+              </div>
+              <fieldset class="check-grid slim">
+                <legend>安全选项</legend>
+                <label><input id="rememberApiKey" type="checkbox" />仅本机记住密钥</label>
+                <label><input id="useApiFallback" type="checkbox" checked />失败时使用本地优化</label>
+              </fieldset>
+              <p class="api-note">本地静态页面适合个人试用；生产环境建议把接口地址换成自己的后端代理，避免在浏览器暴露密钥。</p>
+            </div>
+            <div class="score-board">
+              <div>
+                <span class="score-label">匹配度</span>
+                <strong id="matchScore">0%</strong>
+              </div>
+              <div>
+                <span class="score-label">关键词</span>
+                <strong id="keywordCount">0</strong>
+              </div>
+              <div>
+                <span class="score-label">行动动词</span>
+                <strong id="verbCount">0</strong>
+              </div>
+            </div>
+            <div id="keywordCloud" class="keyword-cloud" aria-live="polite"></div>
+            <div class="action-row">
+              <button id="applyOptimizedBtn" type="button">应用到简历</button>
+              <button id="copyMdBtn" type="button">复制 Markdown</button>
+            </div>
+            <label>
+              <span>优化建议稿</span>
+              <textarea id="optimizedOutput" rows="12"></textarea>
+            </label>
+          </div>
+
+          <div class="panel" id="layoutPanel">
+            <div class="panel-heading">
+              <h2>版式排版</h2>
+              <button id="atsBtn" type="button">ATS模式</button>
+            </div>
+            <div class="field-grid two">
+              <label>
+                <span>模板</span>
+                <select id="templateSelect">
+                  <option value="executive">专业双栏</option>
+                  <option value="compact">紧凑单页</option>
+                  <option value="creative">作品展示</option>
+                  <option value="ats">ATS纯文本</option>
+                </select>
+              </label>
+              <label>
+                <span>主题色</span>
+                <select id="themeSelect">
+                  <option value="teal">墨绿</option>
+                  <option value="coral">珊瑚</option>
+                  <option value="ink">雅黑</option>
+                  <option value="gold">金色</option>
+                </select>
+              </label>
+              <label>
+                <span>字号</span>
+                <input id="fontScale" type="range" min="86" max="116" value="100" />
+              </label>
+              <label>
+                <span>行距</span>
+                <input id="densityScale" type="range" min="86" max="116" value="100" />
+              </label>
+            </div>
+            <fieldset class="check-grid">
+              <legend>显示模块</legend>
+              <label><input id="showAvatar" type="checkbox" checked />头像</label>
+              <label><input id="showProjects" type="checkbox" checked />项目</label>
+              <label><input id="showEducation" type="checkbox" checked />教育</label>
+              <label><input id="showSkills" type="checkbox" checked />技能</label>
+            </fieldset>
+            <div class="field-grid two">
+              <label>
+                <span>简历页数</span>
+                <select id="pageMode">
+                  <option value="auto">自动</option>
+                  <option value="one">尽量一页</option>
+                  <option value="two">两页展示</option>
+                </select>
+              </label>
+              <label>
+                <span>段落风格</span>
+                <select id="toneSelect">
+                  <option value="direct">直接量化</option>
+                  <option value="balanced">稳健完整</option>
+                  <option value="concise">精简冲刺</option>
+                </select>
+              </label>
+            </div>
+            <div class="module-builder">
+              <div class="panel-subheading">
+                <h3>侧端模块</h3>
+                <span>选择后会加入简历预览</span>
+              </div>
+              <div class="module-add-row">
+                <select id="modulePresetSelect">
+                  <option value="awards">荣誉奖项</option>
+                  <option value="languages">语言能力</option>
+                  <option value="certifications">证书资质</option>
+                  <option value="publications">论文/专利</option>
+                  <option value="openSource">开源/社区</option>
+                  <option value="volunteer">志愿经历</option>
+                  <option value="custom">自定义模块</option>
+                </select>
+                <button id="addModuleBtn" type="button">添加模块</button>
+              </div>
+              <div id="moduleList" class="module-list"></div>
+            </div>
+          </div>
+
+          <div class="panel" id="avatarPanel">
+            <div class="panel-heading">
+              <h2>头像处理</h2>
+              <button id="downloadAvatarBtn" type="button">下载头像</button>
+            </div>
+            <label class="file-action wide">
+              <input id="avatarFile" type="file" accept="image/*" />
+              上传头像
+            </label>
+            <canvas id="avatarCanvas" width="420" height="420" aria-label="头像预览"></canvas>
+            <div class="field-grid two">
+              <label>
+                <span>缩放</span>
+                <input id="avatarZoom" type="range" min="70" max="160" value="100" />
+              </label>
+              <label>
+                <span>亮度</span>
+                <input id="avatarBrightness" type="range" min="80" max="125" value="104" />
+              </label>
+              <label>
+                <span>对比度</span>
+                <input id="avatarContrast" type="range" min="85" max="130" value="108" />
+              </label>
+              <label>
+                <span>背景</span>
+                <select id="avatarBg">
+                  <option value="#f7fbfa">浅青</option>
+                  <option value="#fff7ed">暖白</option>
+                  <option value="#eef2ff">浅蓝</option>
+                  <option value="#f5f5f4">灰白</option>
+                </select>
+              </label>
+            </div>
+            <div class="action-row">
+              <button id="autoAvatarBtn" type="button">自动优化</button>
+              <button id="clearAvatarBtn" type="button">移除头像</button>
+            </div>
+          </div>
+
+          <div class="panel" id="autofillPanel">
+            <div class="panel-heading">
+              <h2>投递助手</h2>
+              <button id="prepareApplyBtn" type="button">准备投递</button>
+            </div>
+            <div class="apply-steps" aria-label="投递步骤">
+              <div>
+                <strong>1</strong>
+                <span>确认信息</span>
+              </div>
+              <div>
+                <strong>2</strong>
+                <span>打开投递页</span>
+              </div>
+              <div>
+                <strong>3</strong>
+                <span>自动填入并核对</span>
+              </div>
+            </div>
+            <label>
+              <span>投递页面地址</span>
+              <input id="applyUrlField" placeholder="https://company.com/careers/apply..." />
+            </label>
+            <div class="action-row">
+              <button id="openApplyPageBtn" type="button">打开投递页面</button>
+              <button id="copyApplyInfoBtn" type="button">复制投递信息</button>
+              <button id="fillDemoBtn" type="button">试填模拟表单</button>
+            </div>
+            <div class="field-grid two">
+              <label>
+                <span>姓</span>
+                <input id="lastNameField" />
+              </label>
+              <label>
+                <span>名</span>
+                <input id="firstNameField" />
+              </label>
+              <label>
+                <span>LinkedIn</span>
+                <input id="linkedinField" />
+              </label>
+              <label>
+                <span>期望岗位</span>
+                <input id="applyRoleField" />
+              </label>
+            </div>
+            <label>
+              <span>求职信摘要</span>
+              <textarea id="coverField" rows="5"></textarea>
+            </label>
+            <div class="apply-card">
+              <div class="panel-subheading">
+                <h3>可填字段预览</h3>
+                <span id="applyReadyStatus">待准备</span>
+              </div>
+              <div id="applyFieldPreview" class="field-preview"></div>
+            </div>
+            <div class="apply-card">
+              <div class="panel-subheading">
+                <h3>推荐使用方式</h3>
+                <span>更适合普通用户</span>
+              </div>
+              <ol class="apply-guide">
+                <li>点击 `准备投递`，系统会根据当前简历生成投递信息和脚本。</li>
+                <li>点击 `打开投递页面`，在招聘网站登录并进入申请表单。</li>
+                <li>把下面的 `一键填表书签` 拖到浏览器书签栏，之后在投递页点击它。</li>
+                <li>检查姓名、邮箱、电话、作品链接、求职信和附件，再手动提交。</li>
+              </ol>
+              <a id="bookmarkletLink" class="bookmarklet-link" href="#">一键填表书签</a>
+            </div>
+            <div class="action-row">
+              <button id="buildScriptBtn" type="button">重新生成脚本</button>
+              <button id="copyScriptBtn" type="button">复制脚本</button>
+              <button id="copyBookmarkBtn" type="button">复制书签脚本</button>
+              <button id="copyCoverBtn" type="button">复制求职信</button>
+            </div>
+            <label>
+              <span>高级：Console 自动填表脚本</span>
+              <textarea id="autofillScript" rows="9" spellcheck="false"></textarea>
+            </label>
+            <fieldset class="apply-checklist">
+              <legend>提交前检查</legend>
+              <label><input type="checkbox" />已确认投递岗位和公司名称</label>
+              <label><input type="checkbox" />已检查联系方式和作品链接</label>
+              <label><input type="checkbox" />已上传 PDF 简历或按网站要求上传附件</label>
+              <label><input type="checkbox" />已人工核对所有自动填入字段</label>
+            </fieldset>
+            <form id="demoForm" class="demo-form">
+              <strong>模拟招聘表单</strong>
+              <input name="first_name" placeholder="First name" />
+              <input name="last_name" placeholder="Last name" />
+              <input name="email" placeholder="Email" />
+              <input name="phone" placeholder="Phone" />
+              <input name="location" placeholder="Location" />
+              <input name="portfolio" placeholder="Portfolio" />
+              <textarea name="cover_letter" placeholder="Cover letter"></textarea>
+            </form>
+          </div>
+
+          <div class="panel" id="slidesPanel">
+            <div class="panel-heading">
+              <h2>PPT编辑</h2>
+              <button id="generateSlidesBtn" type="button">生成页面</button>
+            </div>
+            <div class="field-grid two">
+              <label>
+                <span>页数</span>
+                <input id="slideCount" type="number" min="2" max="8" value="5" />
+              </label>
+              <label>
+                <span>用途</span>
+                <select id="deckPurpose">
+                  <option value="interview">面试介绍</option>
+                  <option value="portfolio">作品集</option>
+                  <option value="promotion">晋升述职</option>
+                </select>
+              </label>
+            </div>
+            <div id="slideEditor" class="slide-editor"></div>
+            <div class="action-row">
+              <button id="copySlidesBtn" type="button">复制大纲</button>
+              <button id="printSlidesBtn" type="button">打印PPT</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="preview-pane">
+          <div class="preview-toolbar">
+            <div class="segmented" role="tablist" aria-label="预览类型">
+              <button id="resumeViewBtn" class="active" type="button">简历</button>
+              <button id="slidesViewBtn" type="button">PPT</button>
+            </div>
+            <span id="previewMeta">A4预览</span>
+          </div>
+          <div id="resumePreviewWrap" class="preview-scroll">
+            <article id="resumePreview" class="resume-page theme-teal template-executive"></article>
+          </div>
+          <div id="slidesPreviewWrap" class="preview-scroll hidden">
+            <div id="slidesPreview" class="slides-preview"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="./app.js"></script>
+  </body>
+</html>
