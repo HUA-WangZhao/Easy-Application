@@ -167,6 +167,7 @@
       bg: "#f7fbfa"
     },
     autofill: {
+      applyUrl: "",
       firstName: "知夏",
       lastName: "林",
       linkedin: "https://linkedin.com/in/zhixia-lin",
@@ -221,6 +222,7 @@
     lastName: "#lastNameField",
     linkedin: "#linkedinField",
     applyRole: "#applyRoleField",
+    applyUrl: "#applyUrlField",
     cover: "#coverField"
   };
 
@@ -245,6 +247,15 @@
       }
     });
     return base;
+  }
+
+  function scrubSensitiveState(target) {
+    const safe = target || state;
+    if (safe.api) {
+      safe.api.key = "";
+      safe.api.rememberKey = false;
+    }
+    return safe;
   }
 
   function escapeHtml(value) {
@@ -648,7 +659,7 @@
 
     if (ext === "json") {
       const text = await file.text();
-      state = mergeState(clone(defaultState), JSON.parse(text));
+      state = scrubSensitiveState(mergeState(clone(defaultState), JSON.parse(text)));
       syncInputsFromState();
       renderAll();
       toast("JSON简历已导入");
@@ -697,7 +708,8 @@
     $("#apiEndpointInput").value = state.api.endpoint;
     $("#apiModelInput").value = state.api.model;
     $("#apiKeyInput").value = state.api.key || "";
-    $("#rememberApiKey").checked = state.api.rememberKey;
+    $("#rememberApiKey").checked = false;
+    $("#rememberApiKey").disabled = true;
     $("#useApiFallback").checked = state.api.fallback;
     $("#templateSelect").value = state.layout.template;
     $("#themeSelect").value = state.layout.theme;
@@ -717,8 +729,10 @@
     $("#lastNameField").value = state.autofill.lastName;
     $("#linkedinField").value = state.autofill.linkedin;
     $("#applyRoleField").value = state.autofill.role;
+    $("#applyUrlField").value = state.autofill.applyUrl || "";
     $("#coverField").value = state.autofill.cover;
     renderModuleManager();
+    renderApplyPreview();
   }
 
   function syncStateFromInputs() {
@@ -742,7 +756,7 @@
     state.api.endpoint = $("#apiEndpointInput").value.trim();
     state.api.model = $("#apiModelInput").value.trim();
     state.api.key = $("#apiKeyInput").value.trim();
-    state.api.rememberKey = $("#rememberApiKey").checked;
+    state.api.rememberKey = false;
     state.api.fallback = $("#useApiFallback").checked;
     state.layout.template = $("#templateSelect").value;
     state.layout.theme = $("#themeSelect").value;
@@ -762,6 +776,7 @@
     state.autofill.lastName = $("#lastNameField").value.trim();
     state.autofill.linkedin = $("#linkedinField").value.trim();
     state.autofill.role = $("#applyRoleField").value.trim();
+    state.autofill.applyUrl = $("#applyUrlField").value.trim();
     state.autofill.cover = $("#coverField").value.trim();
   }
 
@@ -815,6 +830,190 @@
     renderModuleManager();
     renderResume();
     toast("模块已添加到简历");
+  }
+
+  async function importStyleFromFile(file) {
+    const ext = extensionOf(file.name);
+    let style = null;
+    let summary = "";
+
+    if (ext === "json") {
+      const imported = JSON.parse(await file.text());
+      style = styleFromSavedResume(imported);
+      summary = "已从 Resume Studio JSON 精准导入模板、主题色、字号、行距和模块结构。";
+    } else {
+      const text = ["pdf", "docx", "doc", "rtf"].includes(ext) ? await readResumeFileAsTextOnly(file) : await file.text();
+      style = inferStyleFromText(text, file.name);
+      summary = style.summary;
+    }
+
+    if (!style) throw new Error("没有识别到可用的风格信息");
+    applyImportedStyle(style);
+    $("#styleImportStatus").textContent = "已应用";
+    $("#styleImportStatus").classList.add("ok");
+    $("#styleImportStatus").classList.remove("error");
+    $("#styleImportSummary").textContent = summaryTextFromStyle(style, summary);
+    syncInputsFromState();
+    renderAll();
+    toast("已套用他人简历风格");
+  }
+
+  async function readResumeFileAsTextOnly(file) {
+    const ext = extensionOf(file.name);
+    if (["txt", "md", "markdown", "csv", "html", "htm", "css"].includes(ext)) return file.text();
+    if (ext === "rtf") return stripRtf(await file.text());
+    const arrayBuffer = await file.arrayBuffer();
+    if (ext === "pdf") return extractPdfText(arrayBuffer);
+    if (ext === "docx") return extractDocxText(arrayBuffer);
+    return roughBinaryText(arrayBuffer);
+  }
+
+  function styleFromSavedResume(imported) {
+    const source = imported && typeof imported === "object" ? imported : {};
+    const layout = source.layout || source.resume?.layout;
+    if (!layout) return inferStyleFromText(JSON.stringify(source), "resume.json");
+    return {
+      layout: {
+        template: layout.template || "executive",
+        theme: layout.theme || "teal",
+        fontScale: Number(layout.fontScale || 100),
+        densityScale: Number(layout.densityScale || 100),
+        showAvatar: layout.showAvatar !== false,
+        showProjects: layout.showProjects !== false,
+        showEducation: layout.showEducation !== false,
+        showSkills: layout.showSkills !== false,
+        pageMode: layout.pageMode || "auto",
+        tone: layout.tone || "direct"
+      },
+      modules: Array.isArray(source.modules) ? source.modules.map((module, index) => ({
+        id: `style-module-${Date.now()}-${index}`,
+        title: module.title || "自定义模块",
+        content: "",
+        enabled: Boolean(module.enabled)
+      })) : null,
+      source: "json"
+    };
+  }
+
+  function inferStyleFromText(text, fileName = "") {
+    const raw = String(text || "");
+    const lower = `${fileName}\n${raw}`.toLowerCase();
+    const colors = raw.match(/#[0-9a-fA-F]{6}\b/g) || [];
+    const theme = colors.length ? nearestTheme(colors[0]) : inferThemeByWords(lower);
+    let template = "executive";
+    if (/ats|applicant tracking|plain|single.?column|单栏|纯文本|极简|简洁/.test(lower)) template = "ats";
+    if (/compact|one.?page|一页|紧凑/.test(lower)) template = "compact";
+    if (/portfolio|creative|case study|作品集|作品展示|视觉|设计/.test(lower)) template = "creative";
+    if (/sidebar|two.?column|双栏|侧栏|left column|aside/.test(lower)) template = "executive";
+
+    const fontScale = /large|大字号|展示|presentation/.test(lower) ? 108 : /compact|紧凑|one.?page|一页/.test(lower) ? 92 : 100;
+    const densityScale = /compact|紧凑|dense|one.?page|一页/.test(lower) ? 90 : /spacious|留白|大气/.test(lower) ? 110 : 100;
+    const modules = [];
+    Object.entries(modulePresets).forEach(([key, preset]) => {
+      if (key !== "custom" && lower.includes(preset.title.toLowerCase())) {
+        modules.push({
+          id: `style-${key}-${Date.now()}`,
+          title: preset.title,
+          content: "",
+          enabled: true
+        });
+      }
+    });
+
+    return {
+      layout: {
+        template,
+        theme,
+        fontScale,
+        densityScale,
+        showAvatar: !/no.?photo|无头像|不放照片|ats/.test(lower),
+        showProjects: !/no.?project|隐藏项目/.test(lower),
+        showEducation: !/no.?education|隐藏教育/.test(lower),
+        showSkills: !/no.?skill|隐藏技能/.test(lower),
+        pageMode: /two.?page|两页/.test(lower) ? "two" : /one.?page|一页/.test(lower) ? "one" : "auto",
+        tone: /concise|简洁|精简/.test(lower) ? "concise" : /balanced|完整|稳健/.test(lower) ? "balanced" : "direct"
+      },
+      modules: modules.length ? modules : null,
+      summary: "已根据上传文件中的颜色、栏目关键词、ATS/作品集/单页等特征推断风格。"
+    };
+  }
+
+  function inferThemeByWords(lower) {
+    if (/coral|red|orange|珊瑚|红|橙|暖色/.test(lower)) return "coral";
+    if (/gold|yellow|金|黄|商务/.test(lower)) return "gold";
+    if (/black|gray|grey|mono|黑|灰|极简/.test(lower)) return "ink";
+    return "teal";
+  }
+
+  function nearestTheme(hex) {
+    const rgb = hexToRgb(hex);
+    const themes = {
+      teal: [24, 115, 95],
+      coral: [195, 92, 70],
+      ink: [44, 52, 49],
+      gold: [176, 123, 23]
+    };
+    return Object.entries(themes)
+      .map(([theme, value]) => [theme, colorDistance(rgb, value)])
+      .sort((a, b) => a[1] - b[1])[0][0];
+  }
+
+  function hexToRgb(hex) {
+    const clean = hex.replace("#", "");
+    return [
+      parseInt(clean.slice(0, 2), 16),
+      parseInt(clean.slice(2, 4), 16),
+      parseInt(clean.slice(4, 6), 16)
+    ];
+  }
+
+  function colorDistance(a, b) {
+    return Math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2);
+  }
+
+  function applyImportedStyle(style) {
+    state.layout = mergeState(state.layout, style.layout || {});
+    if (Array.isArray(style.modules)) {
+      state.modules = style.modules.map((module) => ({
+        id: module.id || `style-module-${Date.now()}`,
+        title: module.title || "自定义模块",
+        content: module.content || "",
+        enabled: module.enabled !== false
+      }));
+    }
+  }
+
+  function summaryTextFromStyle(style, prefix = "") {
+    const layout = style.layout || state.layout;
+    const templateName = {
+      executive: "专业双栏",
+      compact: "紧凑单页",
+      creative: "作品展示",
+      ats: "ATS纯文本"
+    }[layout.template] || layout.template;
+    const themeName = {
+      teal: "墨绿",
+      coral: "珊瑚",
+      ink: "雅黑",
+      gold: "金色"
+    }[layout.theme] || layout.theme;
+    return [
+      prefix,
+      `模板：${templateName}`,
+      `主题色：${themeName}`,
+      `字号：${layout.fontScale}`,
+      `行距：${layout.densityScale}`,
+      style.modules ? `模块结构：${style.modules.map((module) => module.title).join("、") || "无"}` : "模块结构：保留当前模块"
+    ].filter(Boolean).join(" | ");
+  }
+
+  function resetStyle() {
+    state.layout = clone(defaultState.layout);
+    syncInputsFromState();
+    renderAll();
+    $("#styleImportStatus").textContent = "已恢复";
+    $("#styleImportSummary").textContent = "已恢复默认专业双栏风格。";
+    toast("已恢复默认风格");
   }
 
   function initials(name) {
@@ -1328,6 +1527,7 @@
       portfolio: state.profile.link,
       linkedin: state.autofill.linkedin,
       role: state.autofill.role || state.profile.title,
+      applyUrl: state.autofill.applyUrl || "",
       coverLetter: state.autofill.cover || state.summary,
       summary: state.summary,
       skills: state.skills
@@ -1338,40 +1538,104 @@
   function autofillSource(bookmarklet = false) {
     const payload = buildAutofillPayload();
     const source = `(() => {
-  const data = ${JSON.stringify(payload, null, 2)};
-  const pairs = [
-    [/first|given|名(?!字)/i, data.firstName],
-    [/last|family|surname|姓/i, data.lastName],
-    [/full.?name|姓名|name/i, data.name],
-    [/e-?mail|邮箱|email/i, data.email],
-    [/phone|mobile|tel|电话|手机/i, data.phone],
-    [/location|city|城市|地址/i, data.location],
-    [/portfolio|website|homepage|作品|主页|github/i, data.portfolio],
-    [/linkedin/i, data.linkedin],
-    [/position|role|job|岗位|职位/i, data.role],
-    [/cover|letter|summary|介绍|求职信|自我评价/i, data.coverLetter]
-  ];
-  const labelText = (el) => {
-    const label = el.id ? document.querySelector('label[for="' + CSS.escape(el.id) + '"]') : null;
-    return [el.name, el.id, el.placeholder, el.getAttribute('aria-label'), label && label.textContent]
-      .filter(Boolean)
-      .join(' ');
+  const data = ${JSON.stringify(payload)};
+  const defs = [
+    { key: 'firstName', label: '名', value: data.firstName, patterns: ['first.?name','given.?name','forename','名(?!字)','名字','first'], type: 'text' },
+    { key: 'lastName', label: '姓', value: data.lastName, patterns: ['last.?name','family.?name','surname','姓氏','^姓$','last'], type: 'text' },
+    { key: 'name', label: '姓名', value: data.name, patterns: ['full.?name','姓名','真实姓名','your.?name','candidate.?name','applicant.?name','name'], type: 'text' },
+    { key: 'email', label: '邮箱', value: data.email, patterns: ['e-?mail','邮箱','电子邮件','mail'], type: 'email' },
+    { key: 'phone', label: '电话', value: data.phone, patterns: ['phone','mobile','tel','电话','手机','联系方式','联系电话'], type: 'tel' },
+    { key: 'location', label: '城市', value: data.location, patterns: ['location','city','current.?city','address','城市','所在地','地址','现居地','居住地'], type: 'text' },
+    { key: 'portfolio', label: '作品/主页', value: data.portfolio, patterns: ['portfolio','website','homepage','github','personal.?site','作品','主页','个人网站','项目链接'], type: 'url' },
+    { key: 'linkedin', label: 'LinkedIn', value: data.linkedin, patterns: ['linkedin','linked.?in','领英'], type: 'url' },
+    { key: 'role', label: '期望岗位', value: data.role, patterns: ['position','role','job.?title','desired.?job','岗位','职位','申请职位','求职意向','应聘职位'], type: 'text' },
+    { key: 'coverLetter', label: '求职信', value: data.coverLetter, patterns: ['cover.?letter','motivation','personal.?statement','summary','介绍','求职信','自我介绍','自我评价','补充说明','why.*apply'], type: 'textarea' },
+    { key: 'summary', label: '个人摘要', value: data.summary, patterns: ['bio','profile','summary','个人简介','职业摘要','个人优势'], type: 'textarea' },
+    { key: 'skills', label: '技能', value: data.skills, patterns: ['skills','skill.?set','能力','技能','专长'], type: 'textarea' }
+  ].filter((item) => item.value);
+
+  const isHidden = (el) => {
+    const style = window.getComputedStyle(el);
+    return style.display === 'none' || style.visibility === 'hidden' || el.closest('[hidden], [aria-hidden="true"]');
   };
-  const setValue = (el, value) => {
-    if (!value || el.type === 'file' || el.disabled || el.readOnly) return false;
-    el.focus();
-    el.value = value;
+  const cssEscape = (value) => window.CSS && CSS.escape ? CSS.escape(value) : String(value).replace(/"/g, '\\\\"');
+  const nearbyText = (el) => {
+    const labelFor = el.id ? document.querySelector('label[for="' + cssEscape(el.id) + '"]') : null;
+    const ownLabel = el.closest('label');
+    const fieldset = el.closest('fieldset');
+    const parent = el.parentElement;
+    const previous = el.previousElementSibling;
+    const next = el.nextElementSibling;
+    return [
+      el.name, el.id, el.className, el.placeholder, el.autocomplete, el.type,
+      el.getAttribute('aria-label'), el.getAttribute('title'), el.getAttribute('data-testid'),
+      labelFor && labelFor.textContent,
+      ownLabel && ownLabel.textContent,
+      fieldset && fieldset.querySelector('legend') && fieldset.querySelector('legend').textContent,
+      previous && previous.textContent,
+      next && next.textContent,
+      parent && parent.textContent && parent.textContent.slice(0, 180)
+    ].filter(Boolean).join(' ').replace(/\\s+/g, ' ').toLowerCase();
+  };
+  const score = (def, el, text) => {
+    let value = 0;
+    def.patterns.forEach((pattern) => {
+      try {
+        if (new RegExp(pattern, 'i').test(text)) value += 8;
+      } catch {}
+    });
+    if (el.autocomplete && new RegExp(def.key.replace('Name', ' name'), 'i').test(el.autocomplete)) value += 10;
+    if (def.type === 'email' && el.type === 'email') value += 14;
+    if (def.type === 'tel' && ['tel', 'phone'].includes(el.type)) value += 14;
+    if (def.type === 'url' && el.type === 'url') value += 8;
+    if (def.type === 'textarea' && el.tagName === 'TEXTAREA') value += 10;
+    if (/company|employer|学校|公司名称|推荐人|referrer|password|密码|captcha|验证码/.test(text)) value -= 20;
+    if (def.key === 'name' && /first|last|given|family|surname|姓|名/.test(text)) value -= 10;
+    return value;
+  };
+  const nativeSet = (el, value) => {
+    if (el.isContentEditable) {
+      el.focus();
+      el.textContent = value;
+      el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: value }));
+      return true;
+    }
+    if (el.tagName === 'SELECT') {
+      const lower = String(value).toLowerCase();
+      const option = [...el.options].find((item) => {
+        const text = (item.textContent + ' ' + item.value).toLowerCase();
+        return text.includes(lower) || lower.includes(text.trim());
+      });
+      if (option) el.value = option.value;
+      else return false;
+    } else {
+      const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+      const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+      el.focus();
+      if (setter) setter.call(el, value);
+      else el.value = value;
+    }
     el.dispatchEvent(new Event('input', { bubbles: true }));
     el.dispatchEvent(new Event('change', { bubbles: true }));
+    el.dispatchEvent(new Event('blur', { bubbles: true }));
     return true;
   };
-  let filled = 0;
-  document.querySelectorAll('input, textarea, select').forEach((el) => {
-    const text = labelText(el);
-    const found = pairs.find(([pattern]) => pattern.test(text));
-    if (found && setValue(el, found[1])) filled += 1;
+  const controls = [...document.querySelectorAll('input, textarea, select, [contenteditable="true"]')]
+    .filter((el) => !el.disabled && !el.readOnly && !isHidden(el))
+    .filter((el) => !['hidden','file','button','submit','reset','password','checkbox','radio'].includes((el.type || '').toLowerCase()));
+  const filled = [];
+  const skippedFile = document.querySelectorAll('input[type="file"]').length;
+  controls.forEach((el) => {
+    const text = nearbyText(el);
+    const ranked = defs
+      .map((def) => ({ def, points: score(def, el, text) }))
+      .sort((a, b) => b.points - a.points);
+    const winner = ranked[0];
+    if (winner && winner.points >= 10 && nativeSet(el, winner.def.value)) {
+      filled.push(winner.def.label);
+    }
   });
-  alert('Resume Studio 已填入 ' + filled + ' 个字段，请核对后提交。');
+  alert('Resume Studio 已尝试填入 ' + filled.length + ' 个字段：' + [...new Set(filled)].join('、') + (skippedFile ? '\\n检测到附件上传字段，请手动上传 PDF 简历。' : '') + '\\n请逐项核对后再提交。');
 })();`;
     if (!bookmarklet) return source;
     return `javascript:${encodeURIComponent(source)}`;
@@ -1381,7 +1645,78 @@
     syncStateFromInputs();
     const script = autofillSource(false);
     $("#autofillScript").value = script;
+    updateBookmarkletLink();
+    renderApplyPreview();
     toast("已生成自动填表脚本");
+  }
+
+  function renderApplyPreview() {
+    const host = $("#applyFieldPreview");
+    if (!host) return;
+    const data = buildAutofillPayload();
+    const fields = [
+      ["姓名", data.name],
+      ["姓/名", `${data.lastName || ""} / ${data.firstName || ""}`],
+      ["邮箱", data.email],
+      ["电话", data.phone],
+      ["城市", data.location],
+      ["作品主页", data.portfolio],
+      ["LinkedIn", data.linkedin],
+      ["期望岗位", data.role]
+    ];
+    host.innerHTML = fields.map(([label, value]) => `
+      <div class="field-preview-item">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(value || "未填写")}</strong>
+      </div>
+    `).join("");
+    const missing = fields.filter(([, value]) => !value).length;
+    const status = $("#applyReadyStatus");
+    if (status) {
+      status.textContent = missing ? `缺 ${missing} 项` : "可投递";
+      status.classList.toggle("ok", !missing);
+      status.classList.toggle("error", Boolean(missing));
+    }
+  }
+
+  function updateBookmarkletLink() {
+    const link = $("#bookmarkletLink");
+    if (!link) return;
+    link.href = autofillSource(true);
+    link.title = "把这个链接拖到浏览器书签栏，在投递页面点击即可尝试自动填表";
+  }
+
+  function prepareApplication() {
+    syncStateFromInputs();
+    buildAutofillScript();
+    toast("投递信息已准备好");
+  }
+
+  function openApplyPage() {
+    syncStateFromInputs();
+    const url = state.autofill.applyUrl;
+    if (!url) {
+      toast("先填写投递页面地址");
+      return;
+    }
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  function applyInfoText() {
+    const data = buildAutofillPayload();
+    return [
+      `姓名：${data.name}`,
+      `姓/名：${data.lastName} / ${data.firstName}`,
+      `邮箱：${data.email}`,
+      `电话：${data.phone}`,
+      `城市：${data.location}`,
+      `作品/主页：${data.portfolio}`,
+      `LinkedIn：${data.linkedin}`,
+      `期望岗位：${data.role}`,
+      "",
+      "求职信摘要：",
+      data.coverLetter
+    ].join("\n");
   }
 
   function fillDemoForm() {
@@ -1535,7 +1870,7 @@
 
   function serializeState() {
     const savedState = clone(state);
-    if (!savedState.api.rememberKey) savedState.api.key = "";
+    scrubSensitiveState(savedState);
     return JSON.stringify(savedState, null, 2);
   }
 
@@ -1583,7 +1918,7 @@
       toast("没有找到本地保存");
       return;
     }
-    state = mergeState(clone(defaultState), JSON.parse(saved));
+    state = scrubSensitiveState(mergeState(clone(defaultState), JSON.parse(saved)));
     if (state.avatar?.src) await loadAvatar(state.avatar.src);
     syncInputsFromState();
     renderSlideEditor();
@@ -1614,7 +1949,7 @@
       ...$$("input"),
       ...$$("textarea"),
       ...$$("select")
-    ].filter((input) => !["resumeFile", "avatarFile"].includes(input.id));
+    ].filter((input) => !["resumeFile", "avatarFile", "styleFile"].includes(input.id));
 
     liveInputs.forEach((input) => {
       input.addEventListener("input", () => {
@@ -1658,6 +1993,21 @@
       reader.readAsDataURL(file);
     });
 
+    $("#styleFile").addEventListener("change", async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      try {
+        await importStyleFromFile(file);
+      } catch (error) {
+        $("#styleImportStatus").textContent = "导入失败";
+        $("#styleImportStatus").classList.add("error");
+        $("#styleImportStatus").classList.remove("ok");
+        toast(error.message || "风格导入失败");
+      } finally {
+        event.target.value = "";
+      }
+    });
+
     $("#sampleBtn").addEventListener("click", setSample);
     $("#saveAsBtn").addEventListener("click", saveStateAsFile);
     $("#apiProviderSelect").addEventListener("change", (event) => {
@@ -1665,6 +2015,8 @@
       renderOptimizationStats();
     });
     $("#addModuleBtn").addEventListener("click", addModuleFromPreset);
+    $("#resetStyleBtn").addEventListener("click", resetStyle);
+    $("#copyStyleSummaryBtn").addEventListener("click", () => copyText($("#styleImportSummary").textContent, "风格摘要"));
     $("#parseBtn").addEventListener("click", () => parseResumeText($("#rawInput").value));
     $("#optimizeBtn").addEventListener("click", buildOptimizedDraft);
     $("#apiOptimizeBtn").addEventListener("click", callAiOptimize);
@@ -1701,11 +2053,21 @@
       link.click();
     });
     $("#buildScriptBtn").addEventListener("click", buildAutofillScript);
+    $("#prepareApplyBtn").addEventListener("click", prepareApplication);
+    $("#openApplyPageBtn").addEventListener("click", openApplyPage);
+    $("#copyApplyInfoBtn").addEventListener("click", () => {
+      syncStateFromInputs();
+      copyText(applyInfoText(), "投递信息");
+    });
     $("#copyScriptBtn").addEventListener("click", () => {
       buildAutofillScript();
       copyText($("#autofillScript").value, "自动填表脚本");
     });
     $("#copyBookmarkBtn").addEventListener("click", () => copyText(autofillSource(true), "书签脚本"));
+    $("#copyCoverBtn").addEventListener("click", () => {
+      syncStateFromInputs();
+      copyText(buildAutofillPayload().coverLetter, "求职信");
+    });
     $("#fillDemoBtn").addEventListener("click", fillDemoForm);
     $("#generateSlidesBtn").addEventListener("click", generateSlides);
     $("#copySlidesBtn").addEventListener("click", () => copyText(slidesOutline(), "PPT大纲"));

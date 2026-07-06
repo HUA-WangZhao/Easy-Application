@@ -436,12 +436,24 @@ textarea {
   margin-top: 2px;
 }
 
+.style-import-box,
+.apply-card,
 .module-builder {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface-alt);
   padding: 12px;
   margin-top: 12px;
+}
+
+.style-summary {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 10px;
 }
 
 .module-add-row {
@@ -507,6 +519,120 @@ canvas {
   padding: 12px;
   display: grid;
   gap: 8px;
+}
+
+.apply-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.apply-steps div {
+  min-height: 58px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-alt);
+  padding: 9px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.apply-steps strong {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  flex: 0 0 auto;
+}
+
+.apply-steps span {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.field-preview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.field-preview-item {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fff;
+  padding: 8px;
+  min-width: 0;
+}
+
+.field-preview-item span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.field-preview-item strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--ink);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.apply-guide {
+  margin: 0 0 10px;
+  padding-left: 20px;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.apply-guide li {
+  margin-bottom: 5px;
+}
+
+.bookmarklet-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  border-radius: 7px;
+  border: 1px dashed color-mix(in srgb, var(--accent) 52%, var(--line));
+  background: #fff;
+  color: var(--accent);
+  padding: 0 12px;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: grab;
+}
+
+.apply-checklist {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 10px 2px;
+  margin-top: 10px;
+  background: var(--surface-alt);
+}
+
+.apply-checklist label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.apply-checklist input {
+  width: 16px;
+  min-height: 16px;
 }
 
 .demo-form textarea {
@@ -951,6 +1077,8 @@ canvas {
 @media (max-width: 620px) {
   .field-grid.two,
   .score-board,
+  .apply-steps,
+  .field-preview,
   .check-grid {
     grid-template-columns: 1fr;
   }

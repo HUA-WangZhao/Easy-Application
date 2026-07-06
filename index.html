@@ -182,12 +182,12 @@
                 </label>
                 <label class="wide-field">
                   <span>API Key</span>
-                  <input id="apiKeyInput" type="password" placeholder="sk-..." autocomplete="off" />
+                  <input id="apiKeyInput" type="password" placeholder="运行时填写，不会保存" autocomplete="off" />
                 </label>
               </div>
               <fieldset class="check-grid slim">
                 <legend>安全选项</legend>
-                <label><input id="rememberApiKey" type="checkbox" />仅本机记住密钥</label>
+                <label><input id="rememberApiKey" type="checkbox" disabled />公开版不保存密钥</label>
                 <label><input id="useApiFallback" type="checkbox" checked />失败时使用本地优化</label>
               </fieldset>
               <p class="api-note">本地静态页面适合个人试用；生产环境建议把接口地址换成自己的后端代理，避免在浏览器暴露密钥。</p>
@@ -274,6 +274,21 @@
                   <option value="concise">精简冲刺</option>
                 </select>
               </label>
+            </div>
+            <div class="style-import-box">
+              <div class="panel-subheading">
+                <h3>导入他人简历风格</h3>
+                <span id="styleImportStatus">未导入</span>
+              </div>
+              <label class="file-action wide">
+                <input id="styleFile" type="file" accept=".json,.resume.json,.html,.htm,.css,.pdf,.docx,.md,.markdown,.txt" />
+                选择风格来源
+              </label>
+              <div class="action-row">
+                <button id="resetStyleBtn" type="button">恢复默认风格</button>
+                <button id="copyStyleSummaryBtn" type="button">复制风格摘要</button>
+              </div>
+              <div id="styleImportSummary" class="style-summary">可导入别人保存的 Resume Studio JSON，或上传 HTML/CSS/普通简历文件进行风格推断。</div>
             </div>
             <div class="module-builder">
               <div class="panel-subheading">
