@@ -18,13 +18,21 @@
         </div>
         <div class="top-actions">
           <label class="file-action">
-            <input id="resumeFile" type="file" accept=".txt,.md,.markdown,.json,.csv,.pdf,.doc,.docx,.rtf,.html,.htm" />
+            <input id="resumeFile" type="file" accept=".txt,.md,.markdown,.json,.resume.json,.csv,.pdf,.doc,.docx,.rtf,.html,.htm" />
             导入
           </label>
-          <button id="sampleBtn" type="button">样例</button>
+          <select id="sampleSelect" class="sample-select" aria-label="选择样例版本">
+            <option value="frontend-markdown">前端高级 · Markdown单栏</option>
+            <option value="embedded-linux">嵌入式 Linux · 专业双栏</option>
+            <option value="ai-product">AI 产品工程 · 专业双栏</option>
+            <option value="product-manager">B 端产品经理 · 作品展示</option>
+            <option value="data-analyst">数据分析师 · 紧凑单页</option>
+            <option value="campus-backend">校招后端 · ATS纯文本</option>
+          </select>
+          <button id="sampleBtn" type="button">载入样例</button>
           <button id="saveBtn" type="button">保存</button>
           <button id="saveAsBtn" type="button">另存为</button>
-          <button id="loadBtn" type="button">读取</button>
+          <button id="loadBtn" type="button">打开</button>
           <button id="printBtn" type="button">打印/PDF</button>
         </div>
       </header>
@@ -113,6 +121,27 @@
               <span>教育/证书</span>
               <textarea id="educationInput" rows="4"></textarea>
             </label>
+            <div class="resume-editor-card">
+              <div class="panel-subheading">
+                <h3>成熟度检查</h3>
+                <span id="resumeMaturityScore">待检查</span>
+              </div>
+              <div id="resumeMaturityGrid" class="maturity-grid"></div>
+              <div id="resumeMaturityTips" class="maturity-tips"></div>
+              <div class="action-row">
+                <button id="polishSummaryBtn" type="button">整理摘要</button>
+                <button id="formatSkillsBtn" type="button">规范技能</button>
+                <button id="formatExperienceBtn" type="button">整理经历</button>
+                <button id="compactResumeBtn" type="button">压缩一页</button>
+              </div>
+            </div>
+            <div class="resume-editor-card">
+              <div class="panel-subheading">
+                <h3>章节结构</h3>
+                <span>快速定位</span>
+              </div>
+              <div id="sectionNavigator" class="section-navigator"></div>
+            </div>
           </div>
 
           <div class="panel" id="optimizePanel">
@@ -227,6 +256,8 @@
                 <span>模板</span>
                 <select id="templateSelect">
                   <option value="executive">专业双栏</option>
+                  <option value="imported">原简历风格</option>
+                  <option value="markdown">Markdown单栏</option>
                   <option value="compact">紧凑单页</option>
                   <option value="creative">作品展示</option>
                   <option value="ats">ATS纯文本</option>
@@ -400,6 +431,42 @@
               <span>求职信摘要</span>
               <textarea id="coverField" rows="5"></textarea>
             </label>
+            <div class="apply-card smart-apply-card">
+              <div class="panel-subheading">
+                <h3>智能字段匹配</h3>
+                <span id="smartApplyStatus">可选</span>
+              </div>
+              <label>
+                <span>投递页字段 / 小标题</span>
+                <textarea id="pageFieldsInput" rows="5" placeholder="粘贴投递页面的小标题，例如：项目经验、代表项目、获奖情况、证书资质、个人优势。也可以先复制字段采集脚本到投递页面 Console 运行；如果 Console 不允许粘贴，用下方备用方法。"></textarea>
+              </label>
+              <div class="action-row">
+                <button id="fieldCollectorBtn" type="button">复制字段采集脚本</button>
+                <button id="localSmartApplyBtn" type="button">本地匹配</button>
+                <button id="aiSmartApplyBtn" type="button">AI匹配</button>
+                <button id="copySmartApplyBtn" type="button">复制匹配内容</button>
+              </div>
+              <div class="collector-guide">
+                <strong>字段采集脚本怎么用</strong>
+                <ol>
+                  <li>复制字段采集脚本，打开招聘网站的投递表单页。</li>
+                  <li>按 F12 或 Ctrl + Shift + J，进入 Console 控制台。</li>
+                  <li>粘贴脚本并回车；如果浏览器禁止粘贴，先在 Console 输入 allow pasting 后回车。</li>
+                  <li>脚本会复制当前页面字段 JSON，回到这里粘贴到上方输入框。</li>
+                  <li>点击本地匹配或 AI匹配，再重新生成自动填表脚本。</li>
+                </ol>
+                <div class="collector-fallback">
+                  <b>allow pasting 仍然失败：</b>
+                  打开 DevTools 的 Sources / 源代码 面板，进入 Snippets / 代码段，新建代码段后粘贴脚本，按 Ctrl + Enter 运行；或者直接把投递页的小标题一行一个手动粘贴到上方输入框。
+                </div>
+              </div>
+              <label>
+                <span>智能匹配结果</span>
+                <textarea id="smartApplyOutput" rows="8" spellcheck="false" placeholder="本地匹配或 AI 匹配后会生成 JSON。重新生成脚本后，这些字段会优先用于自动填表。"></textarea>
+              </label>
+              <div id="smartApplyPreview" class="field-preview smart-preview"></div>
+              <p class="api-note">适合处理“项目经历 / 代表项目 / 项目经验”“获奖 / 荣誉 / 竞赛经历”等标题不一致但含义相近的字段。AI 匹配会把当前简历和这些字段标题发送到你配置的 API。</p>
+            </div>
             <div class="apply-card">
               <div class="panel-subheading">
                 <h3>可填字段预览</h3>
